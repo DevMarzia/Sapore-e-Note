@@ -22,6 +22,7 @@ import {
   Film,
   Video,
   Play,
+  Lock,
 } from 'lucide-react';
 import {
   Recipe,
@@ -32,6 +33,7 @@ import {
   RecipeStep,
 } from '../../types/recipe';
 import { calculateRecipeNutrition } from '../../services/nutritionService';
+import { useAuth } from '../../context/AuthContext';
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -228,6 +230,11 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   recipeToEdit,
   onUpdate,
 }) => {
+  const { user } = useAuth();
+  const userEmail = (user?.email || user?.user_metadata?.email || '').toLowerCase().trim();
+  const isApiAuthorized = userEmail === 'devmars.mb@gmail.com';
+  const [lockedNotice, setLockedNotice] = useState<string | null>(null);
+
   const [activeTab, setActiveTab] = useState<ModalTab>('manual');
 
   // Instagram extraction state
@@ -307,9 +314,24 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
     setReelVideoName('');
   };
 
+  const handleTabClick = (tab: ModalTab) => {
+    if (tab !== 'manual' && !isApiAuthorized) {
+      setLockedNotice(
+        `La modalità "${tab === 'website' ? 'Link Web' : 'Reel'}" richiede l'utilizzo delle API di Intelligenza Artificiale ed è abilitata unicamente per l'account devmars.mb@gmail.com per preservare le quote. Puoi creare la tua ricetta in modalità Manuale!`
+      );
+      return;
+    }
+    setLockedNotice(null);
+    setActiveTab(tab);
+  };
+
   // Reset or pre-populate when modal opens/closes or recipeToEdit changes
   useEffect(() => {
     if (isOpen) {
+      setLockedNotice(null);
+      if (!isApiAuthorized) {
+        setActiveTab('manual');
+      }
       if (recipeToEdit) {
         setActiveTab('manual');
         setTitle(recipeToEdit.title);
@@ -614,11 +636,15 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 
       const res = await fetch('/api/extract-recipe', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-email': userEmail,
+        },
         body: JSON.stringify({
           url: webUrl.trim(),
           source_type: 'website',
           rawText: webRawText.trim() || undefined,
+          userEmail,
         }),
       });
 
@@ -729,7 +755,10 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 
       const res = await fetch('/api/extract-reel', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-email': userEmail,
+        },
         body: JSON.stringify({
           url: reelUrl.trim(),
           rawText: reelRawText.trim(),
@@ -737,6 +766,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
           videoBase64,
           videoMimeType: reelVideoFile?.type,
           videoKeyframes,
+          userEmail,
         }),
       });
 
@@ -907,9 +937,10 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
           <div className="flex items-center gap-2">
             {!recipeToEdit && (
               <div className="inline-flex p-1 bg-stone-200/80 rounded-xl text-xs font-semibold gap-1">
+                {/* Manual Tab: Always active and accessible for everyone */}
                 <button
                   type="button"
-                  onClick={() => setActiveTab('manual')}
+                  onClick={() => handleTabClick('manual')}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                     activeTab === 'manual'
                       ? 'bg-white text-stone-900 shadow-xs'
@@ -920,29 +951,53 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
                   <span>{extractionSuccess ? 'Revisione' : 'Manuale'}</span>
                 </button>
 
+                {/* Link Web Tab: Unlocked for devmars.mb@gmail.com, locked with padlock for everyone else */}
                 <button
                   type="button"
-                  onClick={() => setActiveTab('website')}
+                  onClick={() => handleTabClick('website')}
+                  title={
+                    isApiAuthorized
+                      ? 'Importa ricetta da sito web'
+                      : 'Funzione riservata all\'account devmars.mb@gmail.com (consumo API)'
+                  }
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                    activeTab === 'website'
-                      ? 'bg-[#990f4b] text-white shadow-xs'
-                      : 'text-stone-600 hover:text-stone-900'
+                    isApiAuthorized
+                      ? activeTab === 'website'
+                        ? 'bg-[#990f4b] text-white shadow-xs'
+                        : 'text-stone-600 hover:text-stone-900'
+                      : 'opacity-70 text-stone-500 bg-stone-100/70 border border-stone-300/60 hover:bg-stone-200/70'
                   }`}
                 >
-                  <Globe className="w-3.5 h-3.5 text-sky-300" />
+                  {isApiAuthorized ? (
+                    <Globe className="w-3.5 h-3.5 text-sky-400" />
+                  ) : (
+                    <Lock className="w-3.5 h-3.5 text-amber-600" />
+                  )}
                   <span>Link Web</span>
                 </button>
 
+                {/* Reel Tab: Unlocked for devmars.mb@gmail.com, locked with padlock for everyone else */}
                 <button
                   type="button"
-                  onClick={() => setActiveTab('instagram')}
+                  onClick={() => handleTabClick('instagram')}
+                  title={
+                    isApiAuthorized
+                      ? 'Importa ricetta da Instagram Reel con IA'
+                      : 'Funzione riservata all\'account devmars.mb@gmail.com (consumo API)'
+                  }
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                    activeTab === 'instagram'
-                      ? 'bg-[#990f4b] text-white shadow-xs'
-                      : 'text-stone-600 hover:text-stone-900'
+                    isApiAuthorized
+                      ? activeTab === 'instagram'
+                        ? 'bg-[#990f4b] text-white shadow-xs'
+                        : 'text-stone-600 hover:text-stone-900'
+                      : 'opacity-70 text-stone-500 bg-stone-100/70 border border-stone-300/60 hover:bg-stone-200/70'
                   }`}
                 >
-                  <Instagram className="w-3.5 h-3.5 text-pink-300" />
+                  {isApiAuthorized ? (
+                    <Instagram className="w-3.5 h-3.5 text-pink-400" />
+                  ) : (
+                    <Lock className="w-3.5 h-3.5 text-amber-600" />
+                  )}
                   <span>Reel</span>
                 </button>
               </div>
@@ -958,6 +1013,23 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Informational notice when clicking locked API tabs */}
+        {lockedNotice && (
+          <div className="mx-6 mt-3 p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 flex items-start gap-2.5 text-xs animate-in fade-in duration-150">
+            <Lock className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+            <div className="flex-1 leading-relaxed">
+              <span>{lockedNotice}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setLockedNotice(null)}
+              className="text-stone-400 hover:text-stone-700 p-0.5 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* Global Error Banner */}
         {errorMsg && (

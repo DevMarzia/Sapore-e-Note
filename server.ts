@@ -1778,9 +1778,24 @@ Restituisci ESCLUSIVAMENTE un JSON valido con questa struttura:
   };
 }
 
+const AUTHORIZED_AI_EMAIL = 'devmars.mb@gmail.com';
+
+function checkAiAuthorization(req: any): boolean {
+  const headerEmail = String(req.headers['x-user-email'] || '').trim().toLowerCase();
+  const bodyEmail = String(req.body?.userEmail || '').trim().toLowerCase();
+  return headerEmail === AUTHORIZED_AI_EMAIL || bodyEmail === AUTHORIZED_AI_EMAIL;
+}
+
 // Unified API endpoint to extract recipe from Website or Instagram
 app.post('/api/extract-recipe', async (req, res) => {
   try {
+    if (!checkAiAuthorization(req)) {
+      return res.status(403).json({
+        success: false,
+        error: "Funzionalità riservata esclusivamente all'amministratore (devmars.mb@gmail.com).",
+      });
+    }
+
     const { url, source_type, rawText, imageBase64, imageMimeType, videoBase64, videoMimeType, videoKeyframes } = req.body;
     const targetUrl = (url || '').trim();
 
@@ -1825,6 +1840,13 @@ app.post('/api/extract-recipe', async (req, res) => {
 // Backward-compatible Instagram Reel extraction endpoint
 app.post('/api/extract-reel', async (req, res) => {
   try {
+    if (!checkAiAuthorization(req)) {
+      return res.status(403).json({
+        success: false,
+        error: "Funzionalità riservata esclusivamente all'amministratore (devmars.mb@gmail.com).",
+      });
+    }
+
     const { url, rawText, imageBase64, imageMimeType, videoBase64, videoMimeType, videoKeyframes } = req.body;
     const result = await extractInstagramRecipeInternal({
       url: url || '',
