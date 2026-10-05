@@ -1,17 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Database, Sparkles, LogOut, Settings, ChefHat, Compass, ChevronDown, BookMarked } from 'lucide-react';
+import { Plus, Sparkles, LogOut, ChefHat, Compass, ChevronDown, BookMarked } from 'lucide-react';
 import { FilterCategory } from '../../types/recipe';
 import { useAuth } from '../../context/AuthContext';
 
 interface NavbarProps {
   onOpenAddModal: () => void;
-  onOpenConfigModal: () => void;
+  onOpenConfigModal?: () => void;
   onOpenAuthModal: (tab?: 'login' | 'register') => void;
   onViewMyProfile: () => void;
   onViewFeed: () => void;
   activeCategory: FilterCategory;
   onSelectCategory: (category: FilterCategory) => void;
-  isSupabaseActive: boolean;
+  isSupabaseActive?: boolean;
   isInProfileView?: boolean;
   isMyProfileView?: boolean;
 }
@@ -134,19 +134,6 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Zone 3: Primary Actions & User Auth */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Supabase status indicator */}
-          <button
-            type="button"
-            onClick={onOpenConfigModal}
-            title={isSupabaseActive ? 'Supabase attivo e connesso' : 'Modalità Locale attiva'}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white/10 hover:bg-white/20 text-white/90 border border-white/15 transition-colors whitespace-nowrap cursor-pointer"
-          >
-            <Database className="w-3.5 h-3.5 text-[#e39e9c]" />
-            <span className="hidden sm:inline">
-              {isSupabaseActive ? 'Supabase' : 'Locale'}
-            </span>
-          </button>
-
           {/* Primary Action Button: "+ Crea" / "+ Nuova Ricetta" */}
           <button
             type="button"
@@ -158,7 +145,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="xs:hidden">Crea</span>
           </button>
 
-          {/* Auth Section: Logged In Menu or Guest Login/Register */}
+          {/* Auth Section: Logged In Menu or Guest Register */}
           {user ? (
             <div className="flex items-center gap-2" ref={menuRef}>
               {/* Prominent Profile Button */}
@@ -236,18 +223,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <Compass className="w-4 h-4 text-stone-400" />
                         <span>Esplora Community</span>
                       </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsUserMenuOpen(false);
-                          onOpenConfigModal();
-                        }}
-                        className="w-full px-4 py-2 text-left hover:bg-stone-50 flex items-center gap-2.5 font-medium text-stone-700 cursor-pointer"
-                      >
-                        <Settings className="w-4 h-4 text-stone-400" />
-                        <span>Configura Supabase</span>
-                      </button>
                     </div>
 
                     <div className="pt-1 border-t border-stone-100 text-xs">
@@ -272,16 +247,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 type="button"
                 onClick={() => onOpenAuthModal('login')}
-                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white/90 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#e39e9c] hover:bg-[#d27f87] text-[#1e1b1b] shadow-2xs transition-colors cursor-pointer"
               >
-                Accedi
-              </button>
-              <button
-                type="button"
-                onClick={() => onOpenAuthModal('register')}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#e39e9c] hover:bg-[#d27f87] text-[#1e1b1b] shadow-2xs transition-colors cursor-pointer"
-              >
-                Registrati
+                Accedi/Registrati
               </button>
             </div>
           )}

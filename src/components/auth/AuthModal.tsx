@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Lock, Mail, User as UserIcon, Sparkles, Loader2, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Lock, Mail, User as UserIcon, Sparkles, Loader2, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 interface AuthModalProps {
@@ -18,15 +18,41 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [activeTab, setActiveTab] = useState<'login' | 'register'>(defaultTab);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const { signIn, signUp, signInWithGoogle, isConfigured } = useAuth();
+  const { signIn, signUp, signInWithGoogle } = useAuth();
+
+  // Reset all fields so no sensitive credentials remain in memory or in the form
+  const resetForm = () => {
+    setEmail('');
+    setPassword('');
+    setShowPassword(false);
+    setUsername('');
+    setFullName('');
+    setErrorMsg('');
+  };
+
+  // Reset form whenever modal opens or closes or defaultTab changes
+  useEffect(() => {
+    if (isOpen) {
+      resetForm();
+      setActiveTab(defaultTab);
+    } else {
+      resetForm();
+    }
+  }, [isOpen, defaultTab]);
 
   if (!isOpen) return null;
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
 
   const handleGoogleSignIn = async () => {
     setErrorMsg('');
@@ -36,6 +62,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     if (error) {
       setErrorMsg(error);
     } else {
+      resetForm();
       if (onSuccess) onSuccess();
       onClose();
     }
@@ -56,6 +83,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     if (error) {
       setErrorMsg(error);
     } else {
+      resetForm();
       if (onSuccess) onSuccess();
       onClose();
     }
@@ -80,6 +108,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     if (error) {
       setErrorMsg(error);
     } else {
+      resetForm();
       if (onSuccess) onSuccess();
       onClose();
     }
@@ -91,7 +120,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       aria-modal="true"
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs overflow-y-auto"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget) handleClose();
       }}
     >
       <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col my-auto animate-in fade-in zoom-in-95 duration-200">
@@ -99,7 +128,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         <div className="relative bg-[#990f4b] text-white p-6 pb-7">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
@@ -128,6 +157,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             type="button"
             onClick={() => {
               setActiveTab('login');
+              setPassword('');
+              setShowPassword(false);
               setErrorMsg('');
             }}
             className={`flex-1 py-3 text-center transition-colors cursor-pointer ${
@@ -142,6 +173,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             type="button"
             onClick={() => {
               setActiveTab('register');
+              setPassword('');
+              setShowPassword(false);
               setErrorMsg('');
             }}
             className={`flex-1 py-3 text-center transition-colors cursor-pointer ${
@@ -229,13 +262,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <div className="relative">
                   <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-2.5" />
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-9 pr-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-stone-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#990f4b]/20 focus:border-[#990f4b]"
+                    className="w-full pl-9 pr-10 py-2 bg-stone-50 border border-stone-300 rounded-xl text-stone-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#990f4b]/20 focus:border-[#990f4b]"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-3 top-2.5 text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
+                    title={showPassword ? 'Nascondi password' : 'Mostra password'}
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
@@ -311,14 +353,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <div className="relative">
                   <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-2.5" />
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     required
                     minLength={6}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Minimo 6 caratteri"
-                    className="w-full pl-9 pr-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-stone-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#990f4b]/20 focus:border-[#990f4b]"
+                    className="w-full pl-9 pr-10 py-2 bg-stone-50 border border-stone-300 rounded-xl text-stone-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#990f4b]/20 focus:border-[#990f4b]"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-3 top-2.5 text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
+                    title={showPassword ? 'Nascondi password' : 'Mostra password'}
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
@@ -339,21 +390,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </form>
           )}
 
-          <div className="mt-5 pt-4 border-t border-stone-100 flex items-center justify-between text-[11px] text-stone-500">
-            <span>
-              {isConfigured
-                ? 'Connesso al tuo Supabase Auth'
-                : 'Modalità dimostrativa locale attiva'}
-            </span>
+          <div className="mt-5 pt-4 border-t border-stone-100 text-center text-xs text-stone-500">
+            <span>{activeTab === 'login' ? 'Non hai ancora un account? ' : 'Hai già un account? '}</span>
             <button
               type="button"
               onClick={() => {
                 setActiveTab(activeTab === 'login' ? 'register' : 'login');
+                setPassword('');
+                setShowPassword(false);
                 setErrorMsg('');
               }}
               className="text-[#990f4b] font-semibold hover:underline cursor-pointer"
             >
-              {activeTab === 'login' ? 'Crea un account' : 'Hai già un account?'}
+              {activeTab === 'login' ? 'Crea un account' : 'Accedi'}
             </button>
           </div>
         </div>

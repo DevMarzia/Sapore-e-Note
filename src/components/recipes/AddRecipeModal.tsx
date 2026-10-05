@@ -315,9 +315,9 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   };
 
   const handleTabClick = (tab: ModalTab) => {
-    if (tab !== 'manual' && !isApiAuthorized) {
+    if (tab === 'instagram' && !isApiAuthorized) {
       setLockedNotice(
-        `La modalità "${tab === 'website' ? 'Link Web' : 'Reel'}" richiede l'utilizzo delle API di Intelligenza Artificiale ed è abilitata unicamente per l'account devmars.mb@gmail.com per preservare le quote. Puoi creare la tua ricetta in modalità Manuale!`
+        'Questa funzionalità non è accessibile, puoi inserire la tua ricetta manualmente o tramite Link Web!'
       );
       return;
     }
@@ -329,7 +329,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setLockedNotice(null);
-      if (!isApiAuthorized) {
+      if (activeTab === 'instagram' && !isApiAuthorized) {
         setActiveTab('manual');
       }
       if (recipeToEdit) {
@@ -951,28 +951,18 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
                   <span>{extractionSuccess ? 'Revisione' : 'Manuale'}</span>
                 </button>
 
-                {/* Link Web Tab: Unlocked for devmars.mb@gmail.com, locked with padlock for everyone else */}
+                {/* Link Web Tab: 100% Free HTML scraping without API, unlocked for all users */}
                 <button
                   type="button"
                   onClick={() => handleTabClick('website')}
-                  title={
-                    isApiAuthorized
-                      ? 'Importa ricetta da sito web'
-                      : 'Funzione riservata all\'account devmars.mb@gmail.com (consumo API)'
-                  }
+                  title="Importa ricetta da qualsiasi sito web di cucina"
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                    isApiAuthorized
-                      ? activeTab === 'website'
-                        ? 'bg-[#990f4b] text-white shadow-xs'
-                        : 'text-stone-600 hover:text-stone-900'
-                      : 'opacity-70 text-stone-500 bg-stone-100/70 border border-stone-300/60 hover:bg-stone-200/70'
+                    activeTab === 'website'
+                      ? 'bg-[#990f4b] text-white shadow-xs'
+                      : 'text-stone-600 hover:text-stone-900'
                   }`}
                 >
-                  {isApiAuthorized ? (
-                    <Globe className="w-3.5 h-3.5 text-sky-400" />
-                  ) : (
-                    <Lock className="w-3.5 h-3.5 text-amber-600" />
-                  )}
+                  <Globe className={`w-3.5 h-3.5 ${activeTab === 'website' ? 'text-white' : 'text-sky-500'}`} />
                   <span>Link Web</span>
                 </button>
 
@@ -983,7 +973,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
                   title={
                     isApiAuthorized
                       ? 'Importa ricetta da Instagram Reel con IA'
-                      : 'Funzione riservata all\'account devmars.mb@gmail.com (consumo API)'
+                      : 'Questa funzionalità non è accessibile'
                   }
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                     isApiAuthorized

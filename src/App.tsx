@@ -490,17 +490,6 @@ export default function App() {
                     hasFiltersApplied={activeCategory !== 'Tutte' || searchQuery.trim() !== ''}
                   />
                 </div>
-
-                {/* Community Chefs Spotlight Bar at the bottom of the feed */}
-                {!searchQuery && activeCategory === 'Tutte' && (
-                  <div className="pt-8 border-t border-stone-200/80">
-                    <CommunityChefsSection
-                      recipes={recipes}
-                      onSelectAuthor={handleAuthorClick}
-                      searchFilter=""
-                    />
-                  </div>
-                )}
               </section>
             )}
           </>
@@ -508,11 +497,7 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <Footer
-        onResetDemo={handleResetDemo}
-        onOpenConfig={() => setIsConfigModalOpen(true)}
-        totalRecipes={recipes.length}
-      />
+      <Footer totalRecipes={recipes.length} />
 
       {/* Modals */}
       <RecipeDetailModal

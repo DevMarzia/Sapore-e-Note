@@ -1244,61 +1244,10 @@ async function scrapeWebRecipe(targetUrl: string, rawTextFallback?: string) {
   }
 
   // =========================================================================
-  // 5. Flash-Lite AI Fallback (ONLY if GEMINI_API_KEY is configured and data is incomplete)
+  // 5. 100% Free HTML/Microdata/DOM Extraction (NO Gemini API consumption)
   // =========================================================================
-  if (ai && (rawIngredients.length < 2 || rawSteps.length < 2)) {
-    console.log('Attivazione Gemini Flash-Lite per completamento ed estrazione ordinata...');
-    $('script, style, nav, footer, header, aside').remove();
-    const cleanText = $('body').text().replace(/\s+/g, ' ').slice(0, 7000);
-
-    const prompt = `Analizza il testo della pagina web "${targetUrl}" ed estrai la ricetta completa in modo ordinato.
-Titolo: ${title}
-Testo:
-"""
-${cleanText}
-"""
-Regole:
-1. Estrai tutti gli ingredienti con la relativa quantità esatta.
-2. Riordina gli ingredienti in sequenza logica (basi e proteine prima, condimenti e spezie dopo).
-3. Estrai e numera i passaggi sequenziali di preparazione.
-
-Restituisci ESCLUSIVAMENTE un JSON valido:
-{
-  "title": "${title}",
-  "category": "Antipasti" | "Primi" | "Secondi" | "Dolci",
-  "prep_time": "es. 30 min",
-  "servings": 4,
-  "ingredients": [{ "name": "Nome", "amount": "dose" }],
-  "steps": ["Passaggio 1", "Passaggio 2"]
-}`;
-
-    for (const modelName of CANDIDATE_GEMINI_MODELS) {
-      try {
-        const response = await ai.models.generateContent({
-          model: modelName,
-          contents: prompt,
-          config: { responseMimeType: 'application/json' },
-        });
-        const outputText = response.text || '';
-        if (outputText) {
-          const parsed = JSON.parse(outputText.replace(/```json\n?|\n?```/g, '').trim());
-          if (Array.isArray(parsed.ingredients) && parsed.ingredients.length > rawIngredients.length) {
-            rawIngredients.length = 0;
-            parsed.ingredients.forEach((ing: any) => {
-              rawIngredients.push(typeof ing === 'string' ? ing : `${ing.name} ${ing.amount}`);
-            });
-          }
-          if (Array.isArray(parsed.steps) && parsed.steps.length > rawSteps.length) {
-            rawSteps.length = 0;
-            parsed.steps.forEach((s: any) => rawSteps.push(String(s)));
-          }
-          break;
-        }
-      } catch (err: any) {
-        console.warn('Gemini Flash-Lite fallback error:', err.message || err);
-      }
-    }
-  }
+  // Web recipe extraction relies purely on JSON-LD Schema, HTML selectors,
+  // and structural text analysis, ensuring 0 API tokens consumed for any user.
 
   // =========================================================================
   // 6. Synthesis if Steps are still missing (e.g. video-only recipe)
@@ -1789,13 +1738,6 @@ function checkAiAuthorization(req: any): boolean {
 // Unified API endpoint to extract recipe from Website or Instagram
 app.post('/api/extract-recipe', async (req, res) => {
   try {
-    if (!checkAiAuthorization(req)) {
-      return res.status(403).json({
-        success: false,
-        error: "Funzionalità riservata esclusivamente all'amministratore (devmars.mb@gmail.com).",
-      });
-    }
-
     const { url, source_type, rawText, imageBase64, imageMimeType, videoBase64, videoMimeType, videoKeyframes } = req.body;
     const targetUrl = (url || '').trim();
 
@@ -1807,6 +1749,14 @@ app.post('/api/extract-recipe', async (req, res) => {
       (Boolean(rawText) && !targetUrl.startsWith('http'));
 
     if (isInstagram) {
+      // Instagram Reel extraction requires Gemini AI (vision/video frames)
+      if (!checkAiAuthorization(req)) {
+        return res.status(403).json({
+          success: false,
+          error: 'Questa funzionalità non è accessibile.',
+        });
+      }
+
       const result = await extractInstagramRecipeInternal({
         url: targetUrl,
         rawText,
@@ -1843,7 +1793,7 @@ app.post('/api/extract-reel', async (req, res) => {
     if (!checkAiAuthorization(req)) {
       return res.status(403).json({
         success: false,
-        error: "Funzionalità riservata esclusivamente all'amministratore (devmars.mb@gmail.com).",
+        error: 'Questa funzionalità non è accessibile.',
       });
     }
 
