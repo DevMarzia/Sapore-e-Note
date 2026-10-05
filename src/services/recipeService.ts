@@ -502,6 +502,31 @@ export const recipeService = {
     return true;
   },
 
+  async deleteAllUserRecipes(userId?: string, username?: string): Promise<void> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      try {
+        if (userId) {
+          await supabase.from('recipes').delete().eq('user_id', userId);
+        }
+        if (username) {
+          await supabase.from('recipes').delete().eq('author->>username', username);
+        }
+      } catch (e) {
+        console.warn('Errore eliminazione ricette utente su Supabase:', e);
+      }
+    }
+
+    // Rimuovi da locale
+    const current = getLocalRecipes();
+    const filtered = current.filter((r) => {
+      if (userId && r.user_id === userId) return false;
+      if (username && r.author?.username?.toLowerCase() === username.toLowerCase()) return false;
+      return true;
+    });
+    saveLocalRecipes(filtered);
+  },
+
   resetToDemo(): Recipe[] {
     saveLocalRecipes(INITIAL_DEMO_RECIPES);
     return INITIAL_DEMO_RECIPES;

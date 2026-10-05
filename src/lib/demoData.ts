@@ -3,6 +3,15 @@ import { Recipe } from '../types/recipe';
 export const INITIAL_DEMO_RECIPES: Recipe[] = [
   {
     id: 'demo-gramigna',
+    user_id: 'chef-martina-russo',
+    author: {
+      id: 'chef-martina-russo',
+      username: 'martina_russo',
+      full_name: 'Martina Russo',
+      avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+      bio: 'Food creator & pasta enthusiast. Amo i primi piatti veloci, cremosi e conviviali.',
+      is_private: false,
+    },
     title: 'Gramigna alla Salsiccia',
     category: 'Primi',
     prep_time: '20 min',
@@ -10,6 +19,7 @@ export const INITIAL_DEMO_RECIPES: Recipe[] = [
     calories: 1320,
     created_at: new Date().toISOString(),
     source_url: 'https://www.instagram.com/reel/martinarusso_real/',
+    source_type: 'instagram',
     image_url: 'https://images.unsplash.com/photo-1621996346565-e3d5d62817d3?auto=format&fit=crop&w=1200&q=80',
     ingredients: [
       { id: 'ing-g1', name: 'Gramigna', amount: '250 g' },
@@ -33,6 +43,15 @@ export const INITIAL_DEMO_RECIPES: Recipe[] = [
   },
   {
     id: 'demo-1',
+    user_id: 'chef-marco-bianchi',
+    author: {
+      id: 'chef-marco-bianchi',
+      username: 'chef_marco',
+      full_name: 'Marco Bianchi',
+      avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
+      bio: 'Chef toscano appassionato di antipasti rustici e ingredienti a km 0.',
+      is_private: false,
+    },
     title: 'Bruschette Rustiche al Pomodoro e Basilico',
     category: 'Antipasti',
     prep_time: '15 min',
@@ -58,6 +77,15 @@ export const INITIAL_DEMO_RECIPES: Recipe[] = [
   },
   {
     id: 'demo-2',
+    user_id: 'chef-nonna-rosa',
+    author: {
+      id: 'chef-nonna-rosa',
+      username: 'nonna_rosa',
+      full_name: 'Rosa Ferrari',
+      avatar_url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=300&q=80',
+      bio: 'Oltre 40 anni di sfoglia emiliana, funghi dell\'Appennino e ricette della tradizione.',
+      is_private: false,
+    },
     title: 'Tagliatelle Emiliane ai Funghi Porcini e Tartufo',
     category: 'Primi',
     prep_time: '30 min',
@@ -85,6 +113,15 @@ export const INITIAL_DEMO_RECIPES: Recipe[] = [
   },
   {
     id: 'demo-3',
+    user_id: 'chef-luigi-esposito',
+    author: {
+      id: 'chef-luigi-esposito',
+      username: 'luigi_gourmet',
+      full_name: 'Luigi Esposito',
+      avatar_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
+      bio: 'Cucina di mare, sapori costieri e ricette di pesce equilibrate e raffinate.',
+      is_private: false,
+    },
     title: 'Filetto di Spigola alle Erbe Aromatiche e Patate Dorate',
     category: 'Secondi',
     prep_time: '35 min',
@@ -111,6 +148,15 @@ export const INITIAL_DEMO_RECIPES: Recipe[] = [
   },
   {
     id: 'demo-4',
+    user_id: 'chef-chiara-valenti',
+    author: {
+      id: 'chef-chiara-valenti',
+      username: 'chiara_cucina',
+      full_name: 'Chiara Valenti',
+      avatar_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80',
+      bio: 'Pasticceria artigianale e dolci al cucchiaio. Il tiramisù è il mio cavallo di battaglia!',
+      is_private: false,
+    },
     title: 'Tiramisù Tradizionale al Mascarpone e Caffè Moka',
     category: 'Dolci',
     prep_time: '25 min (+ 4h riposo)',
@@ -139,6 +185,15 @@ export const INITIAL_DEMO_RECIPES: Recipe[] = [
   },
   {
     id: 'demo-5',
+    user_id: 'chef-gennaro-romano',
+    author: {
+      id: 'chef-gennaro-romano',
+      username: 'gennaro_chef',
+      full_name: 'Gennaro Romano',
+      avatar_url: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=300&q=80',
+      bio: 'Cucina napoletana verace. Melanzane dorate e fritte a regola d\'arte.',
+      is_private: false,
+    },
     title: 'Parmigiana di Melanzane alla Napoletana',
     category: 'Antipasti',
     prep_time: '50 min',
@@ -164,6 +219,15 @@ export const INITIAL_DEMO_RECIPES: Recipe[] = [
   },
   {
     id: 'demo-6',
+    user_id: 'chef-alessandro-conti',
+    author: {
+      id: 'chef-alessandro-conti',
+      username: 'alessandro_conti',
+      full_name: 'Alessandro Conti',
+      avatar_url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=300&q=80',
+      bio: 'Chef milanese, risotti all\'onda e studio rigoroso delle mantecature.',
+      is_private: false,
+    },
     title: 'Risotto Carnaroli alla Milanese con Zafferano Puro',
     category: 'Primi',
     prep_time: '25 min',

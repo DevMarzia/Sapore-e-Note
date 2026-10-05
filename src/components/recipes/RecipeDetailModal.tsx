@@ -20,6 +20,7 @@ import {
 import confetti from 'canvas-confetti';
 import { Recipe, RecipeNutrition } from '../../types/recipe';
 import { NutritionDashboard } from './NutritionDashboard';
+import { useAuth } from '../../context/AuthContext';
 
 interface RecipeDetailModalProps {
   recipe: Recipe | null;
@@ -38,11 +39,22 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
   onAuthorClick,
   onUpdateNutrition,
 }) => {
+  const { user: currentUser, profile: currentProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<'recipe' | 'nutrition'>('recipe');
   const [checkedIngredients, setCheckedIngredients] = useState<Record<string, boolean>>({});
   const [completedSteps, setCompletedSteps] = useState<Record<string, boolean>>({});
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [imageError, setImageError] = useState(false);
+
+  const isOwner = Boolean(
+    currentUser &&
+      recipe &&
+      ((recipe.user_id && recipe.user_id === currentUser.id) ||
+        (recipe.author?.username &&
+          currentProfile?.username &&
+          recipe.author.username.toLowerCase() === currentProfile.username.toLowerCase()) ||
+        (recipe.author?.id && recipe.author.id === currentUser.id))
+  );
 
   const author = recipe?.author || (recipe?.user_id ? {
     id: recipe.user_id,
@@ -444,53 +456,72 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
 
         {/* Modal Bottom Action Footer */}
         <div className="p-4 sm:px-8 border-t border-stone-200 bg-stone-50/80 flex items-center justify-between gap-3">
-          {confirmDelete ? (
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-[#990f4b]">Confermi l'eliminazione?</span>
-              <button
-                type="button"
-                onClick={() => {
-                  onDeleteRecipe(recipe.id);
-                  onClose();
-                }}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#990f4b] text-white hover:bg-[#ad3d5e] transition-colors"
-              >
-                Sì, elimina
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirmDelete(false)}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium text-stone-600 hover:bg-stone-200 transition-colors"
-              >
-                Annulla
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 sm:gap-3">
-              <button
-                type="button"
-                onClick={() => setConfirmDelete(true)}
-                className="flex items-center gap-1.5 text-xs text-stone-500 hover:text-[#990f4b] transition-colors p-1 cursor-pointer"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Elimina ricetta</span>
-              </button>
+          {isOwner ? (
+            confirmDelete ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-[#990f4b]">Confermi l'eliminazione?</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDeleteRecipe(recipe.id);
+                    onClose();
+                  }}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#990f4b] text-white hover:bg-[#ad3d5e] transition-colors cursor-pointer"
+                >
+                  Sì, elimina
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(false)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium text-stone-600 hover:bg-stone-200 transition-colors cursor-pointer"
+                >
+                  Annulla
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 sm:gap-3">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(true)}
+                  className="flex items-center gap-1.5 text-xs text-stone-500 hover:text-[#990f4b] transition-colors p-1 cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Elimina</span>
+                </button>
 
-              {onEditRecipe && (
-                <>
-                  <span aria-hidden="true" className="text-stone-300">·</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onEditRecipe(recipe);
-                      onClose();
-                    }}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-[#990f4b] hover:text-[#ad3d5e] transition-colors p-1 cursor-pointer"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                    <span>Modifica</span>
-                  </button>
-                </>
+                {onEditRecipe && (
+                  <>
+                    <span aria-hidden="true" className="text-stone-300">·</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onEditRecipe(recipe);
+                        onClose();
+                      }}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-[#990f4b] hover:text-[#ad3d5e] transition-colors p-1 cursor-pointer"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>Modifica</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            )
+          ) : (
+            <div className="text-xs text-stone-500">
+              {author ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    if (onAuthorClick) onAuthorClick(author);
+                  }}
+                  className="hover:text-[#990f4b] hover:underline font-medium cursor-pointer"
+                >
+                  Ricetta creata da <strong>@{author.username}</strong>
+                </button>
+              ) : (
+                <span>Ricetta della Community</span>
               )}
             </div>
           )}

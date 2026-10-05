@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { User } from '@supabase/supabase-js';
 import { getSupabaseClient, isSupabaseConfigured } from '../lib/supabase';
 import { UserProfile } from '../types/recipe';
+import { recipeService } from '../services/recipeService';
 
 interface AuthContextType {
   user: User | null;
@@ -14,6 +15,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<{ error?: string }>;
   uploadAvatar: (file: File) => Promise<string | null>;
+  deleteAccount: () => Promise<{ error?: string }>;
 }
 
 const LOCAL_USER_KEY = 'sapore_note_local_user_v1';
@@ -596,6 +598,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
+  // Permanently delete user profile and associated recipes
+  const deleteAccount = async (): Promise<{ error?: string }> => {
+    const currentUserId = user?.id;
+    const currentUsername = profile?.username;
+
+    const supabase = getSupabaseClient();
+    if (supabase && isConfigured && currentUserId) {
+      try {
+        // 1. Try to invoke delete_user_account RPC function
+        try {
+          await supabase.rpc('delete_user_account');
+        } catch (rpcErr) {
+          console.warn('RPC delete_user_account non presente o non eseguibile:', rpcErr);
+        }
+
+        // 2. Delete all recipes created by this user on Supabase
+        await recipeService.deleteAllUserRecipes(currentUserId, currentUsername);
+
+        // 3. Delete profile row from public.profiles
+        const { error: profileDeleteError } = await supabase
+          .from('profiles')
+          .delete()
+          .eq('id', currentUserId);
+
+        if (profileDeleteError) {
+          console.warn('Cancellazione tabella profiles:', profileDeleteError.message);
+        }
+
+        // 4. Sign out
+        try {
+          await supabase.auth.signOut();
+        } catch (e) {
+          console.warn('Errore signOut dopo delete:', e);
+        }
+      } catch (err: any) {
+        console.error('Errore durante cancellazione profilo Supabase:', err);
+      }
+    } else {
+      // Local Mode: delete local recipes of this user
+      await recipeService.deleteAllUserRecipes(currentUserId, currentUsername);
+    }
+
+    // Clear local storage and state
+    setUser(null);
+    setProfile(null);
+    localStorage.removeItem(LOCAL_USER_KEY);
+    localStorage.removeItem(LOCAL_PROFILE_KEY);
+
+    return {};
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -615,6 +668,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signOut,
         updateProfile,
         uploadAvatar,
+        deleteAccount,
       }}
     >
       {children}

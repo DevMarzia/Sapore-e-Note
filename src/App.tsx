@@ -7,10 +7,11 @@ import { RecipeDetailModal } from './components/recipes/RecipeDetailModal';
 import { AddRecipeModal } from './components/recipes/AddRecipeModal';
 import { SupabaseConfigModal } from './components/ui/SupabaseConfigModal';
 import { ToastContainer } from './components/ui/Toast';
+import { CommunityChefsSection } from './components/community/CommunityChefsSection';
 import { recipeService } from './services/recipeService';
 import { isSupabaseConfigured, getSupabaseClient } from './lib/supabase';
 import { Recipe, RecipeFormData, FilterCategory, ToastMessage, RecipeNutrition, UserProfile } from './types/recipe';
-import { BookOpen, Utensils, Sparkles, AlertTriangle, Database } from 'lucide-react';
+import { BookOpen, Utensils, Sparkles, AlertTriangle, Database, Users, ArrowRight } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
 import { AuthModal } from './components/auth/AuthModal';
 import { UserProfileView } from './components/profile/UserProfileView';
@@ -22,6 +23,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<FilterCategory>('Tutte');
   const [searchQuery, setSearchQuery] = useState('');
+  const [homeTab, setHomeTab] = useState<'recipes' | 'chefs'>('recipes');
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [recipeToEdit, setRecipeToEdit] = useState<Recipe | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -33,6 +35,20 @@ export default function App() {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [isSupabaseActive, setIsSupabaseActive] = useState(false);
   const [isTableMissingOnSupabase, setIsTableMissingOnSupabase] = useState(false);
+
+  const isMyProfileView = Boolean(
+    viewingProfile &&
+      profile &&
+      (viewingProfile.id === profile.id ||
+        viewingProfile.username?.toLowerCase() === profile.username?.toLowerCase())
+  );
+
+  // Keep viewingProfile in sync when user updates their own profile
+  useEffect(() => {
+    if (isMyProfileView && profile) {
+      setViewingProfile(profile);
+    }
+  }, [profile, isMyProfileView]);
 
   const addToast = useCallback((type: 'success' | 'error' | 'info', message: string) => {
     const newToast: ToastMessage = {
@@ -85,7 +101,16 @@ export default function App() {
     return counts;
   }, [recipes]);
 
-  // Filter recipes according to active category and search text (title & ingredients)
+  // Compute unique chefs count
+  const uniqueChefsCount = useMemo(() => {
+    const set = new Set<string>();
+    recipes.forEach((r) => {
+      if (r.author?.username) set.add(r.author.username.toLowerCase());
+    });
+    return set.size;
+  }, [recipes]);
+
+  // Filter recipes according to active category and search text (title, ingredients, author)
   const filteredRecipes = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
@@ -95,13 +120,19 @@ export default function App() {
         return false;
       }
 
-      // Search query check (title or any ingredient name)
+      // Search query check (title, ingredient, or author username)
       if (query) {
+        const cleanQuery = query.replace(/^@/, '');
         const titleMatches = recipe.title.toLowerCase().includes(query);
         const ingredientMatches = recipe.ingredients.some((ing) =>
           ing.name.toLowerCase().includes(query)
         );
-        return titleMatches || ingredientMatches;
+        const authorMatches = Boolean(
+          recipe.author &&
+            (recipe.author.username.toLowerCase().includes(cleanQuery) ||
+              (recipe.author.full_name && recipe.author.full_name.toLowerCase().includes(cleanQuery)))
+        );
+        return titleMatches || ingredientMatches || authorMatches;
       }
 
       return true;
@@ -112,7 +143,7 @@ export default function App() {
     try {
       const created = await recipeService.createRecipe(formData, profile);
       setRecipes((prev) => [created, ...prev]);
-      addToast('success', `Ricetta "${created.title}" aggiunta con successo!`);
+      addToast('success', `Ricetta "${created.title}" salvata con successo nel tuo ricettario!`);
       // If we're filtering on a different category, switch to the new recipe's category or Tutte
       if (activeCategory !== 'Tutte' && activeCategory !== created.category) {
         setActiveCategory(created.category);
@@ -164,7 +195,7 @@ export default function App() {
     try {
       await recipeService.deleteRecipe(id);
       setRecipes((prev) => prev.filter((r) => r.id !== id));
-      addToast('info', 'Ricetta rimossa dal ricettario');
+      addToast('info', 'Ricetta rimossa dal tuo ricettario');
     } catch (err) {
       console.error('Errore eliminazione:', err);
       addToast('error', 'Impossibile eliminare la ricetta');
@@ -184,14 +215,19 @@ export default function App() {
     setSearchQuery('');
   };
 
-  const handleAuthorClick = async (author: {
-    id: string;
-    username: string;
-    full_name?: string;
-    avatar_url?: string;
-    bio?: string;
-    is_private?: boolean;
-  }) => {
+  const handleAuthorClick = async (author: UserProfile) => {
+    // If clicking on my own avatar, open My Profile
+    if (
+      profile &&
+      (author.id === profile.id ||
+        (author.username && author.username.toLowerCase() === profile.username.toLowerCase()))
+    ) {
+      setViewingProfile(profile);
+      setSelectedRecipe(null);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     // Set immediate viewing with available data
     const initialProfile: UserProfile = {
       id: author.id,
@@ -205,7 +241,7 @@ export default function App() {
     setSelectedRecipe(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    // Fetch fresh profile with privacy status from Supabase
+    // Fetch fresh profile from Supabase if configured
     const supabase = getSupabaseClient();
     if (supabase) {
       try {
@@ -258,20 +294,24 @@ export default function App() {
         }}
         onViewFeed={() => {
           setViewingProfile(null);
+          setHomeTab('recipes');
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         activeCategory={activeCategory}
         onSelectCategory={(cat) => {
           setActiveCategory(cat);
           setViewingProfile(null);
+          setHomeTab('recipes');
         }}
         isSupabaseActive={isSupabaseActive}
         isInProfileView={Boolean(viewingProfile)}
+        isMyProfileView={isMyProfileView}
       />
 
       {/* Main Content Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         {viewingProfile ? (
+          /* Dedicated Profile View (either My Profile or Public Profile of another chef) */
           <UserProfileView
             profile={viewingProfile}
             recipes={recipes}
@@ -280,6 +320,10 @@ export default function App() {
             onEditRecipe={handleEditRecipe}
             onDeleteRecipe={handleDeleteRecipe}
             onOpenEditProfile={() => setIsEditProfileModalOpen(true)}
+            onOpenAddModal={() => {
+              setRecipeToEdit(null);
+              setIsAddModalOpen(true);
+            }}
             onShareProfile={(uname) => {
               if (navigator.clipboard) {
                 navigator.clipboard.writeText(window.location.origin + '#profile-' + uname);
@@ -288,6 +332,7 @@ export default function App() {
             }}
           />
         ) : (
+          /* Home Page: Community Explore Feed & Discover Creators */
           <>
             {/* Banner if Supabase credentials entered but table 'recipes' missing in DB */}
             {isTableMissingOnSupabase && isSupabaseConfigured() && (
@@ -298,11 +343,11 @@ export default function App() {
                   </div>
                   <div className="text-xs">
                     <p className="font-bold text-sm text-amber-950">
-                      Tabella 'recipes' non trovata su Supabase (Causa dell'errore 404)
+                      Tabella 'recipes' non trovata su Supabase
                     </p>
                     <p className="text-amber-800 mt-1 leading-relaxed">
-                      Le tue credenziali Supabase sono valide, ma la tabella <code className="px-1.5 py-0.5 bg-amber-200/70 rounded font-mono font-bold text-amber-950">recipes</code> non è ancora stata creata nel database.
-                      Esegui lo script SQL nel SQL Editor di Supabase per abilitare la persistenza nel cloud.
+                      Le tue credenziali Supabase sono valide, ma la tabella <code className="px-1.5 py-0.5 bg-amber-200/70 rounded font-mono font-bold text-amber-950">recipes</code> non è ancora presente.
+                      Esegui lo script SQL nel SQL Editor di Supabase per abilitare la persistenza cloud.
                     </p>
                   </div>
                 </div>
@@ -318,25 +363,30 @@ export default function App() {
             )}
 
             {/* Editorial Hero Header */}
-            <section className="text-center max-w-3xl mx-auto mb-10 sm:mb-14">
+            <section className="text-center max-w-3xl mx-auto mb-10 sm:mb-12">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f4dedf]/60 border border-[#d27f87]/30 text-xs font-semibold text-[#990f4b] mb-4">
                 <Sparkles className="w-3.5 h-3.5 text-[#990f4b]" />
                 <span>Social Ricettario & Community Gastronomica</span>
               </div>
 
               <h1 className="font-editorial text-3xl sm:text-5xl font-bold tracking-tight text-stone-900 leading-[1.15] text-balance">
-                Il Tuo Ricettario Digitale
+                Esplora le Ricette della Community
               </h1>
 
               <p className="mt-3.5 text-sm sm:text-base text-stone-600 leading-relaxed text-pretty max-w-2xl mx-auto">
-                Crea, importa ricette da Instagram Reel o siti web con revisione prima di salvare, scopri i piatti della community ed esplora i profili degli altri chef.
+                Scopri piatti autentici creati dagli altri cuochi, cerca profili e creator gastronomici, oppure accedi al tuo profilo per custodire le tue creazioni personali.
               </p>
 
-              {/* Quick Metrics Bar with Typographic Separators */}
-              <div className="mt-5 flex items-center justify-center gap-4 text-xs font-medium text-stone-500 tabular-nums">
+              {/* Quick Metrics Bar & Personal Profile Shortcut (if logged in) */}
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-4 text-xs font-medium text-stone-500 tabular-nums">
                 <span className="flex items-center gap-1.5">
                   <BookOpen className="w-3.5 h-3.5 text-[#c05f72]" />
-                  <strong className="text-stone-800">{recipes.length}</strong> ricette salvate
+                  <strong className="text-stone-800">{recipes.length}</strong> ricette pubbliche
+                </span>
+                <span aria-hidden="true" className="text-stone-300">·</span>
+                <span className="flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-[#c05f72]" />
+                  <strong className="text-stone-800">{uniqueChefsCount}</strong> creator attivi
                 </span>
                 <span aria-hidden="true" className="text-stone-300">·</span>
                 <span className="flex items-center gap-1.5">
@@ -344,9 +394,37 @@ export default function App() {
                   <strong className="text-stone-800">4</strong> categorie
                 </span>
               </div>
+
+              {/* Logged-In User Banner: Instant access to "Il Mio Ricettario" */}
+              {user && profile && (
+                <div className="mt-6 inline-flex items-center gap-3 p-2 pl-3 pr-4 rounded-2xl bg-white border border-[#d27f87]/40 shadow-xs">
+                  <div className="w-8 h-8 rounded-full overflow-hidden bg-[#f4dedf] flex items-center justify-center text-[#990f4b] font-bold text-xs">
+                    {profile.avatar_url ? (
+                      <img src={profile.avatar_url} alt={profile.username} className="w-full h-full object-cover" />
+                    ) : (
+                      (profile.full_name || profile.username).slice(0, 1).toUpperCase()
+                    )}
+                  </div>
+                  <div className="text-left text-xs">
+                    <span className="text-stone-500">Sei connesso come </span>
+                    <strong className="text-stone-900">@{profile.username}</strong>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setViewingProfile(profile);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className="ml-2 flex items-center gap-1 text-xs font-bold text-[#990f4b] hover:underline cursor-pointer"
+                  >
+                    <span>Apri il tuo Ricettario</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
             </section>
 
-            {/* Search Bar & Category Filters */}
+            {/* Search Bar & Category Filters with Mode Tabs */}
             <section className="mb-10 sm:mb-12">
               <SearchAndFilter
                 searchQuery={searchQuery}
@@ -354,45 +432,77 @@ export default function App() {
                 activeCategory={activeCategory}
                 onCategoryChange={setActiveCategory}
                 categoryCounts={categoryCounts}
+                activeTab={homeTab}
+                onTabChange={setHomeTab}
+                chefsCount={uniqueChefsCount}
               />
             </section>
 
-            {/* Recipes Grid */}
-            <section>
-              <div className="flex items-center justify-between mb-6 pb-2 border-b border-stone-200/80">
-                <div className="flex items-baseline gap-2">
-                  <h2 className="font-editorial text-xl sm:text-2xl font-bold text-stone-900">
-                    {activeCategory === 'Tutte' ? 'Tutte le Ricette' : activeCategory}
-                  </h2>
-                  <span className="text-xs text-stone-500 tabular-nums">
-                    ({filteredRecipes.length} {filteredRecipes.length === 1 ? 'risultato' : 'risultati'})
-                  </span>
+            {/* View Mode 1: Creator & Profiles */}
+            {homeTab === 'chefs' ? (
+              <section className="animate-in fade-in duration-200">
+                <CommunityChefsSection
+                  recipes={recipes}
+                  onSelectAuthor={handleAuthorClick}
+                  searchFilter={searchQuery}
+                />
+              </section>
+            ) : (
+              /* View Mode 2: Community Recipes Grid */
+              <section className="space-y-10">
+                <div>
+                  <div className="flex items-center justify-between mb-6 pb-2 border-b border-stone-200/80">
+                    <div className="flex items-baseline gap-2">
+                      <h2 className="font-editorial text-xl sm:text-2xl font-bold text-stone-900">
+                        {activeCategory === 'Tutte' ? 'Tutte le Ricette della Community' : activeCategory}
+                      </h2>
+                      <span className="text-xs text-stone-500 tabular-nums">
+                        ({filteredRecipes.length} {filteredRecipes.length === 1 ? 'piatto' : 'piatti'})
+                      </span>
+                    </div>
+
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery('')}
+                        className="text-xs text-[#990f4b] hover:underline cursor-pointer"
+                      >
+                        Cancella ricerca
+                      </button>
+                    )}
+                  </div>
+
+                  <RecipeGrid
+                    recipes={filteredRecipes}
+                    isLoading={isLoading}
+                    onSelectRecipe={setSelectedRecipe}
+                    onAuthorClick={handleAuthorClick}
+                    onOpenAddModal={() => {
+                      if (!user) {
+                        setAuthModalTab('register');
+                        setIsAuthModalOpen(true);
+                      } else {
+                        setRecipeToEdit(null);
+                        setIsAddModalOpen(true);
+                      }
+                    }}
+                    onClearFilters={handleClearFilters}
+                    hasFiltersApplied={activeCategory !== 'Tutte' || searchQuery.trim() !== ''}
+                  />
                 </div>
 
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery('')}
-                    className="text-xs text-[#990f4b] hover:underline"
-                  >
-                    Cancella ricerca
-                  </button>
+                {/* Community Chefs Spotlight Bar at the bottom of the feed */}
+                {!searchQuery && activeCategory === 'Tutte' && (
+                  <div className="pt-8 border-t border-stone-200/80">
+                    <CommunityChefsSection
+                      recipes={recipes}
+                      onSelectAuthor={handleAuthorClick}
+                      searchFilter=""
+                    />
+                  </div>
                 )}
-              </div>
-
-              <RecipeGrid
-                recipes={filteredRecipes}
-                isLoading={isLoading}
-                onSelectRecipe={setSelectedRecipe}
-                onAuthorClick={handleAuthorClick}
-                onOpenAddModal={() => {
-                  setRecipeToEdit(null);
-                  setIsAddModalOpen(true);
-                }}
-                onClearFilters={handleClearFilters}
-                hasFiltersApplied={activeCategory !== 'Tutte' || searchQuery.trim() !== ''}
-              />
-            </section>
+              </section>
+            )}
           </>
         )}
       </main>
@@ -437,8 +547,12 @@ export default function App() {
         onClose={() => setIsAuthModalOpen(false)}
         defaultTab={authModalTab}
         onSuccess={() => {
-          addToast('success', 'Accesso effettuato con successo!');
+          addToast('success', 'Accesso effettuato! Benvenuto nel tuo ricettario personale.');
           loadRecipes();
+          // After successful login, switch automatically to My Profile view!
+          if (profile) {
+            setViewingProfile(profile);
+          }
         }}
       />
 
@@ -449,6 +563,11 @@ export default function App() {
         onUpdated={() => {
           addToast('success', 'Profilo aggiornato con successo!');
           if (profile) setViewingProfile(profile);
+        }}
+        onAccountDeleted={() => {
+          setViewingProfile(null);
+          loadRecipes();
+          addToast('info', 'Profilo e ricette personali eliminati definitivamente.');
         }}
       />
 

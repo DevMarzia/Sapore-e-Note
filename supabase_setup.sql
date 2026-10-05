@@ -27,6 +27,7 @@ DROP POLICY IF EXISTS "Profili visualizzabili da chiunque" ON public.profiles;
 DROP POLICY IF EXISTS "Utenti possono aggiornare il proprio profilo" ON public.profiles;
 DROP POLICY IF EXISTS "Inserimento proprio profilo" ON public.profiles;
 DROP POLICY IF EXISTS "Inserimento profilo utente" ON public.profiles;
+DROP POLICY IF EXISTS "Utenti possono eliminare il proprio profilo" ON public.profiles;
 
 -- Creazione nuove policy profili
 CREATE POLICY "Profili consultabili pubblicamente"
@@ -37,6 +38,22 @@ CREATE POLICY "Utenti possono aggiornare il proprio profilo"
 
 CREATE POLICY "Inserimento proprio profilo"
     ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Utenti possono eliminare il proprio profilo"
+    ON public.profiles FOR DELETE USING (auth.uid() = id);
+
+-- Funzione RPC per eliminare definitivamente il proprio profilo e ricette associate
+CREATE OR REPLACE FUNCTION public.delete_user_account()
+RETURNS void AS $$
+BEGIN
+  -- Elimina le ricette create dall'utente
+  DELETE FROM public.recipes WHERE user_id = auth.uid();
+  -- Elimina il profilo dell'utente
+  DELETE FROM public.profiles WHERE id = auth.uid();
+  -- Elimina l'utente da auth.users
+  DELETE FROM auth.users WHERE id = auth.uid();
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Trigger auto-profilo con Google OAuth o Email
 CREATE OR REPLACE FUNCTION public.handle_new_user()

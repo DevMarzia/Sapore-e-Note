@@ -1426,7 +1426,7 @@ async function extractInstagramRecipeInternal(
   imageMimeTypeArg?: string
 ) {
   const isObj = typeof reelUrlOrParams === 'object' && reelUrlOrParams !== null;
-  const reelUrl = (isObj ? reelUrlOrParams.reelUrl || reelUrlOrParams.url || '' : reelUrlOrParams || '').trim();
+  const reelUrl = (typeof reelUrlOrParams === 'string' ? reelUrlOrParams : (reelUrlOrParams.reelUrl || reelUrlOrParams.url || '')).trim();
   const rawText = (isObj ? reelUrlOrParams.rawText : rawTextArg) || '';
   const imageBase64 = isObj ? reelUrlOrParams.imageBase64 : imageBase64Arg;
   const imageMimeType = isObj ? reelUrlOrParams.imageMimeType : imageMimeTypeArg;

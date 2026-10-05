@@ -8,12 +8,12 @@ import {
   Sparkles,
   ChefHat,
   Trash2,
-  ExternalLink,
+  Globe,
+  Plus,
   Flame,
   Clock,
   Users,
-  Lock,
-  Globe,
+  Settings,
 } from 'lucide-react';
 import { Recipe, UserProfile, FilterCategory } from '../../types/recipe';
 import { useAuth } from '../../context/AuthContext';
@@ -26,6 +26,7 @@ interface UserProfileViewProps {
   onEditRecipe: (recipe: Recipe) => void;
   onDeleteRecipe: (recipeId: string) => void;
   onOpenEditProfile: () => void;
+  onOpenAddModal?: () => void;
   onShareProfile?: (username: string) => void;
 }
 
@@ -37,29 +38,46 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
   onEditRecipe,
   onDeleteRecipe,
   onOpenEditProfile,
+  onOpenAddModal,
   onShareProfile,
 }) => {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, profile: currentProfile } = useAuth();
   const [activeCategory, setActiveCategory] = useState<FilterCategory>('Tutte');
   const [copiedShare, setCopiedShare] = useState(false);
 
+  // Check if viewing own profile
   const isOwner = Boolean(
-    currentUser && (currentUser.id === profile.id || currentUser.user_metadata?.username === profile.username)
+    currentUser &&
+      (currentUser.id === profile.id ||
+        (currentProfile?.username &&
+          currentProfile.username.toLowerCase() === profile.username.toLowerCase()) ||
+        (currentUser.user_metadata?.username &&
+          currentUser.user_metadata.username.toLowerCase() === profile.username.toLowerCase()))
   );
 
-  const isPrivateAndNotOwner = Boolean(profile.is_private && !isOwner);
-
-  // Filter recipes created by this user
+  // Strict filtering of recipes for this profile
   const userRecipes = useMemo(() => {
-    if (isPrivateAndNotOwner) return [];
     return recipes.filter((r) => {
-      if (r.user_id && r.user_id === profile.id) return true;
-      if (r.author?.username && r.author.username.toLowerCase() === profile.username.toLowerCase()) return true;
-      // If owner and recipes have no user_id or match
-      if (isOwner && !r.user_id) return true;
+      // Direct user_id match
+      if (r.user_id && profile.id && r.user_id === profile.id) return true;
+
+      // Author username match
+      if (
+        r.author?.username &&
+        profile.username &&
+        r.author.username.toLowerCase() === profile.username.toLowerCase()
+      ) {
+        return true;
+      }
+
+      // Author ID match
+      if (r.author?.id && profile.id && r.author.id === profile.id) {
+        return true;
+      }
+
       return false;
     });
-  }, [recipes, profile, isOwner, isPrivateAndNotOwner]);
+  }, [recipes, profile]);
 
   const filteredRecipes = useMemo(() => {
     if (activeCategory === 'Tutte') return userRecipes;
@@ -70,93 +88,38 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
 
   const handleShare = () => {
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(window.location.href);
+      navigator.clipboard.writeText(window.location.origin + '#profile-' + profile.username);
       setCopiedShare(true);
       setTimeout(() => setCopiedShare(false), 2000);
     }
     if (onShareProfile) onShareProfile(profile.username);
   };
 
-  // If the account is marked private by the chef and the current viewer is not the owner:
-  if (isPrivateAndNotOwner) {
-    return (
-      <div className="space-y-8 animate-in fade-in duration-200 max-w-2xl mx-auto py-4">
-        {/* Back button */}
-        <div>
-          <button
-            type="button"
-            onClick={onBackToFeed}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-stone-600 hover:text-[#990f4b] hover:bg-[#faf7f7] border border-stone-200 transition-colors cursor-pointer shadow-2xs"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Torna a Esplora Ricette</span>
-          </button>
-        </div>
-
-        {/* Private Profile Screen */}
-        <div className="p-8 sm:p-12 rounded-3xl bg-white border border-stone-200 shadow-sm text-center flex flex-col items-center">
-          <div className="relative mb-4">
-            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border-3 border-stone-300 bg-stone-100 flex items-center justify-center">
-              {profile.avatar_url ? (
-                <img
-                  src={profile.avatar_url}
-                  alt={profile.full_name || profile.username}
-                  className="w-full h-full object-cover blur-xs opacity-75"
-                />
-              ) : (
-                <div className="w-full h-full bg-[#f4dedf]/60 flex items-center justify-center text-[#990f4b] font-editorial text-3xl font-bold">
-                  {(profile.full_name || profile.username).slice(0, 2).toUpperCase()}
-                </div>
-              )}
-            </div>
-            <div className="absolute -bottom-1 -right-1 w-9 h-9 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-md border-2 border-white">
-              <Lock className="w-4 h-4" />
-            </div>
-          </div>
-
-          <h1 className="font-editorial text-2xl sm:text-3xl font-bold text-stone-900">
-            {profile.full_name || profile.username}
-          </h1>
-          <p className="text-sm font-semibold text-[#990f4b] mt-0.5">
-            @{profile.username}
-          </p>
-
-          <div className="mt-6 p-5 rounded-2xl bg-amber-50/80 border border-amber-200 text-amber-950 max-w-md">
-            <div className="flex items-center justify-center gap-2 text-amber-900 font-bold text-sm mb-1.5">
-              <Lock className="w-4 h-4 text-amber-700" />
-              <span>Questo Profilo è Privato</span>
-            </div>
-            <p className="text-xs text-amber-800 leading-relaxed">
-              Lo chef ha impostato il proprio ricettario come privato. Le ricette, le dosi e i dettagli gastronomici sono riservati e consultabili unicamente dal titolare dell'account.
-            </p>
-          </div>
-
-          <div className="mt-8">
-            <button
-              type="button"
-              onClick={onBackToFeed}
-              className="px-6 py-2.5 rounded-xl font-semibold bg-[#990f4b] hover:bg-[#ad3d5e] text-white shadow-xs text-xs transition-colors cursor-pointer"
-            >
-              Torna a Esplora Ricette
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-8 animate-in fade-in duration-200">
-      {/* Back button */}
-      <div>
+      {/* Top Navigation Bar with Back Button & Context Badge */}
+      <div className="flex items-center justify-between">
         <button
           type="button"
           onClick={onBackToFeed}
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold text-stone-600 hover:text-[#990f4b] hover:bg-[#faf7f7] border border-stone-200 transition-colors cursor-pointer"
+          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-stone-600 hover:text-[#990f4b] hover:bg-white border border-stone-200 transition-colors cursor-pointer shadow-2xs"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Torna a Esplora Ricette</span>
         </button>
+
+        <div className="text-xs text-stone-500 font-medium">
+          {isOwner ? (
+            <span className="inline-flex items-center gap-1.5 text-[#990f4b] font-semibold bg-[#f4dedf]/70 px-3 py-1 rounded-full border border-[#d27f87]/30">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Il Tuo Ricettario Personale</span>
+            </span>
+          ) : (
+            <span className="text-stone-500">
+              Profilo pubblico di <strong className="text-stone-800">@{profile.username}</strong>
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Profile Header Card */}
@@ -193,21 +156,10 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
                   <p className="text-sm font-semibold text-[#990f4b]">
                     @{profile.username}
                   </p>
-                  <span
-                    onClick={isOwner ? onOpenEditProfile : undefined}
-                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold transition-all ${
-                      profile.is_private
-                        ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                        : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
-                    } ${isOwner ? 'cursor-pointer hover:opacity-80' : ''}`}
-                    title={isOwner ? 'Clicca su Modifica Profilo per cambiare visibilità' : undefined}
-                  >
-                    {profile.is_private ? (
-                      <Lock className="w-3 h-3 text-amber-700" />
-                    ) : (
-                      <Globe className="w-3 h-3 text-emerald-700" />
-                    )}
-                    <span>{profile.is_private ? 'Privato' : 'Pubblico'}</span>
+                  {/* Public Badge */}
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                    <Globe className="w-3 h-3 text-emerald-700" />
+                    <span>Profilo Pubblico</span>
                   </span>
                 </div>
               </div>
@@ -215,14 +167,28 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
               {/* Action Buttons */}
               <div className="flex items-center justify-center sm:justify-start gap-2">
                 {isOwner ? (
-                  <button
-                    type="button"
-                    onClick={onOpenEditProfile}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-white border border-[#d27f87] text-[#990f4b] hover:bg-[#faf7f7] shadow-2xs transition-colors cursor-pointer"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                    <span>Modifica Profilo</span>
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={onOpenEditProfile}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white border border-[#d27f87] text-[#990f4b] hover:bg-[#faf7f7] shadow-2xs transition-colors cursor-pointer"
+                      title="Configura nome, descrizione e foto"
+                    >
+                      <Settings className="w-3.5 h-3.5" />
+                      <span>Configura Profilo</span>
+                    </button>
+
+                    {onOpenAddModal && (
+                      <button
+                        type="button"
+                        onClick={onOpenAddModal}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-[#990f4b] hover:bg-[#ad3d5e] text-white shadow-xs transition-colors cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Aggiungi Ricetta</span>
+                      </button>
+                    )}
+                  </>
                 ) : (
                   <button
                     type="button"
@@ -236,21 +202,42 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
               </div>
             </div>
 
-            {/* Bio */}
-            <p className="text-xs sm:text-sm text-stone-600 max-w-2xl leading-relaxed pt-1">
-              {profile.bio || 'Appassionato della buona tavola e del ricettario italiano.'}
-            </p>
+            {/* Description / Bio */}
+            <div className="pt-1">
+              {profile.bio ? (
+                <p className="text-xs sm:text-sm text-stone-700 max-w-2xl leading-relaxed whitespace-pre-line">
+                  {profile.bio}
+                </p>
+              ) : isOwner ? (
+                <p className="text-xs text-stone-400 italic max-w-2xl leading-relaxed">
+                  Nessuna descrizione inserita. Clicca su{' '}
+                  <button
+                    type="button"
+                    onClick={onOpenEditProfile}
+                    className="text-[#990f4b] underline font-medium hover:text-[#ad3d5e] cursor-pointer"
+                  >
+                    "Configura Profilo"
+                  </button>{' '}
+                  per aggiungere una presentazione e far conoscere la tua passione per la cucina.
+                </p>
+              ) : (
+                <p className="text-xs text-stone-500 italic">
+                  Nessuna descrizione disponibile per questo chef.
+                </p>
+              )}
+            </div>
 
             {/* Meta badges */}
             <div className="pt-2 flex flex-wrap items-center justify-center sm:justify-start gap-4 text-xs font-medium text-stone-500 tabular-nums">
               <span className="flex items-center gap-1.5">
                 <BookOpen className="w-4 h-4 text-[#990f4b]" />
-                <strong className="text-stone-800">{userRecipes.length}</strong> ricette create
+                <strong className="text-stone-800">{userRecipes.length}</strong>{' '}
+                {userRecipes.length === 1 ? 'ricetta salvata' : 'ricette salvate'}
               </span>
               <span aria-hidden="true" className="text-stone-300">·</span>
               <span className="flex items-center gap-1.5">
                 <Calendar className="w-4 h-4 text-[#c05f72]" />
-                <span>Membro della Community</span>
+                <span>{isOwner ? 'Il Tuo Spazio Personale' : 'Membro della Community'}</span>
               </span>
             </div>
           </div>
@@ -262,11 +249,11 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-200 pb-4">
           <div>
             <h2 className="font-editorial text-xl font-bold text-stone-900">
-              {isOwner ? 'Le Mie Ricette' : `Ricette di @${profile.username}`}
+              {isOwner ? 'Le Mie Ricette Personali' : `Ricette di @${profile.username}`}
             </h2>
             <p className="text-xs text-stone-500">
-              {userRecipes.length === 1
-                ? '1 creazione gastronomica pubblicata'
+              {isOwner
+                ? 'Tutte le ricette create da te e custodite nel tuo ricettario'
                 : `${userRecipes.length} creazioni gastronomiche pubblicate`}
             </p>
           </div>
@@ -346,22 +333,26 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Quick Owner Actions */}
+                  {/* Owner Controls on Card (Edit & Delete) */}
                   {isOwner && (
                     <div className="pt-3 border-t border-stone-100 flex items-center justify-between text-xs" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
                         onClick={() => onEditRecipe(recipe)}
-                        className="px-2.5 py-1 text-stone-600 hover:text-[#990f4b] hover:bg-[#faf7f7] rounded-lg transition-colors flex items-center gap-1 font-semibold cursor-pointer"
+                        className="px-2.5 py-1 text-stone-700 hover:text-[#990f4b] hover:bg-[#faf7f7] rounded-lg transition-colors flex items-center gap-1 font-semibold cursor-pointer border border-stone-200"
                       >
-                        <Edit3 className="w-3.5 h-3.5" />
+                        <Edit3 className="w-3.5 h-3.5 text-[#990f4b]" />
                         <span>Modifica</span>
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => onDeleteRecipe(recipe.id)}
-                        className="px-2.5 py-1 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1 font-semibold cursor-pointer"
+                        onClick={() => {
+                          if (window.confirm(`Sei sicuro di voler eliminare la ricetta "${recipe.title}"?`)) {
+                            onDeleteRecipe(recipe.id);
+                          }
+                        }}
+                        className="px-2.5 py-1 text-stone-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1 font-semibold cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         <span>Elimina</span>
@@ -373,16 +364,34 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
             ))}
           </div>
         ) : (
-          <div className="p-12 text-center bg-stone-50/60 rounded-3xl border border-dashed border-stone-200">
-            <ChefHat className="w-12 h-12 text-stone-300 mx-auto mb-3" />
-            <p className="text-base font-bold font-editorial text-stone-700">
-              Nessuna ricetta in questa categoria
-            </p>
-            <p className="text-xs text-stone-500 mt-1 max-w-sm mx-auto">
+          /* Empty State for user recipes */
+          <div className="p-12 text-center bg-white rounded-3xl border-2 border-dashed border-stone-200 shadow-2xs">
+            <div className="w-16 h-16 rounded-full bg-[#f4dedf] text-[#990f4b] flex items-center justify-center mx-auto mb-4">
+              <ChefHat className="w-8 h-8" />
+            </div>
+            <h3 className="text-lg font-bold font-editorial text-stone-800">
               {isOwner
-                ? 'Clicca su "+ Nuova Ricetta" nella barra in alto per aggiungere la tua prima delizia culinaria!'
-                : `Questo chef non ha ancora pubblicato ricette per ${activeCategory.toLowerCase()}.`}
+                ? 'Non hai ancora aggiunto ricette al tuo ricettario'
+                : `Nessuna ricetta trovata per ${activeCategory !== 'Tutte' ? activeCategory.toLowerCase() : 'questo chef'}`}
+            </h3>
+            <p className="text-xs text-stone-500 mt-1 max-w-md mx-auto leading-relaxed">
+              {isOwner
+                ? 'Salva la tua prima delizia culinaria o importa un piatto da Instagram Reel o da un sito web per iniziare la tua collezione personale.'
+                : 'Questo chef non ha ancora ricette salvate in questa categoria.'}
             </p>
+
+            {isOwner && onOpenAddModal && (
+              <div className="mt-6">
+                <button
+                  type="button"
+                  onClick={onOpenAddModal}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold bg-[#990f4b] hover:bg-[#ad3d5e] text-white shadow-xs text-xs transition-all cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Crea la tua prima ricetta</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

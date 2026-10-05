@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Clock, Users, UtensilsCrossed, Sparkles, Flame, Instagram, Globe, User } from 'lucide-react';
+import { Clock, Users, UtensilsCrossed, Sparkles, Flame, Instagram, Globe, User, UserCheck } from 'lucide-react';
 import { Recipe, UserProfile } from '../../types/recipe';
+import { useAuth } from '../../context/AuthContext';
 
 interface RecipeCardProps {
   recipe: Recipe;
@@ -9,6 +10,7 @@ interface RecipeCardProps {
 }
 
 export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onSelect, onAuthorClick }) => {
+  const { user: currentUser, profile: currentProfile } = useAuth();
   const [imageError, setImageError] = useState(false);
 
   // Category subtle color accents
@@ -21,18 +23,30 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onSelect, onAuth
 
   const badgeStyle = categoryAccents[recipe.category] || 'text-stone-800 bg-stone-100 border-stone-200';
 
-  const totalCalories = typeof recipe.calories === 'number' && recipe.calories > 0
-    ? recipe.calories
-    : (recipe.nutrition?.calories ? Math.round(recipe.nutrition.calories) : null);
+  const totalCalories =
+    typeof recipe.calories === 'number' && recipe.calories > 0
+      ? recipe.calories
+      : recipe.nutrition?.calories
+      ? Math.round(recipe.nutrition.calories)
+      : null;
 
   const caloriesPerServing = totalCalories
     ? Math.round(totalCalories / Math.max(1, recipe.servings || 4))
     : null;
 
+  const isMyRecipe = Boolean(
+    currentUser &&
+      ((recipe.user_id && recipe.user_id === currentUser.id) ||
+        (recipe.author?.username &&
+          currentProfile?.username &&
+          recipe.author.username.toLowerCase() === currentProfile.username.toLowerCase()) ||
+        (recipe.author?.id && recipe.author.id === currentUser.id))
+  );
+
   return (
     <article
       onClick={() => onSelect(recipe)}
-      className="group bg-white rounded-xl border border-stone-200/80 overflow-hidden shadow-xs hover:shadow-md hover:border-[#d27f87] transition-all duration-200 flex flex-col h-full cursor-pointer hover:-translate-y-0.5"
+      className="group bg-white rounded-2xl border border-stone-200/80 overflow-hidden shadow-xs hover:shadow-md hover:border-[#d27f87] transition-all duration-200 flex flex-col h-full cursor-pointer hover:-translate-y-0.5"
     >
       {/* Recipe Image Slot */}
       <div className="relative w-full h-52 bg-stone-100 overflow-hidden">
@@ -57,16 +71,26 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onSelect, onAuth
         )}
 
         {/* Category Pill Tag Overlay */}
-        <div className="absolute top-3 left-3">
+        <div className="absolute top-3 left-3 flex items-center gap-1.5">
           <span className={`inline-block px-2.5 py-0.5 text-xs font-medium rounded-md border backdrop-blur-xs shadow-xs ${badgeStyle}`}>
             {recipe.category}
           </span>
+          {isMyRecipe && (
+            <span
+              title="Creata da te"
+              className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-md bg-[#990f4b] text-white backdrop-blur-xs shadow-xs"
+            >
+              <UserCheck className="w-3 h-3" />
+              <span>Tua Ricetta</span>
+            </span>
+          )}
         </div>
 
         {/* Source Badge (Instagram Reel or Website) */}
         {recipe.source_url && (
           <div className="absolute top-3 right-3">
-            {recipe.source_type === 'website' || (!recipe.source_url.includes('instagram.com') && recipe.source_type !== 'instagram') ? (
+            {recipe.source_type === 'website' ||
+            (!recipe.source_url.includes('instagram.com') && recipe.source_type !== 'instagram') ? (
               <span
                 title="Importata da Sito Web"
                 className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-md bg-white/95 text-sky-800 border border-sky-200 backdrop-blur-xs shadow-xs"
@@ -103,7 +127,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onSelect, onAuth
           {recipe.title}
         </h3>
 
-        {/* Unboxed Metadata with Typographic Separator Discipline */}
+        {/* Unboxed Metadata */}
         <div className="mt-2.5 flex items-center gap-2 text-xs text-stone-500 tabular-nums">
           <span className="flex items-center gap-1">
             <Clock className="w-3.5 h-3.5 text-[#c05f72]" />
@@ -124,7 +148,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onSelect, onAuth
           {recipe.ingredients.length > 4 ? '...' : ''}
         </p>
 
-        {/* Card Footer CTA */}
+        {/* Card Footer CTA: Author Badge + Nutrition Indicator */}
         <div className="mt-auto pt-4 border-t border-stone-100 flex items-center justify-between text-xs font-medium text-[#990f4b]">
           {recipe.author ? (
             <button
@@ -135,24 +159,28 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onSelect, onAuth
                   onAuthorClick(recipe.author);
                 }
               }}
-              className="flex items-center gap-1.5 text-stone-600 hover:text-[#990f4b] transition-colors truncate max-w-[140px]"
+              title={`Visita il ricettario di @${recipe.author.username}`}
+              className="flex items-center gap-1.5 py-0.5 px-2 -ml-2 rounded-lg text-stone-700 hover:text-[#990f4b] hover:bg-[#faf7f7] transition-all truncate max-w-[160px] cursor-pointer"
             >
               {recipe.author.avatar_url ? (
                 <img
                   src={recipe.author.avatar_url}
                   alt={recipe.author.username}
-                  className="w-4 h-4 rounded-full object-cover"
+                  className="w-4.5 h-4.5 rounded-full object-cover shrink-0 border border-stone-200"
                 />
               ) : (
-                <User className="w-3.5 h-3.5 text-stone-400" />
+                <User className="w-3.5 h-3.5 text-stone-400 shrink-0" />
               )}
-              <span className="truncate">@{recipe.author.username}</span>
+              <span className="truncate font-semibold text-[11px]">
+                @{recipe.author.username}
+              </span>
             </button>
           ) : (
-            <span className="group-hover:underline">Vedi ricetta</span>
+            <span className="group-hover:underline text-xs">Vedi ricetta</span>
           )}
+
           <span className="inline-flex items-center gap-1 text-[#990f4b] font-medium ml-auto">
-            <span>Nutrizione</span>
+            <span>Dettagli</span>
             <Sparkles className="w-3.5 h-3.5 text-[#c05f72] opacity-70 group-hover:opacity-100 transition-opacity" />
           </span>
         </div>
@@ -160,4 +188,3 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onSelect, onAuth
     </article>
   );
 };
-
