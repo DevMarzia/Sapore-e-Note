@@ -1,0 +1,6 @@
+{
+  "name": "Sapore & Note - Ricettario Digitale",
+  "description": "Ricettario digitale elegante e intuitivo per creare, organizzare e consultare ricette culinarie con gestione ingredienti interattiva e integrazione Supabase.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
